@@ -120,6 +120,9 @@ Permission importante :
 npm install
 ```
 
+Cette etape reste conseillee, mais `npm run build`, `npm run dev`, `npm run typecheck` et `npm run package`
+reinstallent automatiquement les dependances locales si `node_modules` a disparu.
+
 ## Build
 
 ```bash

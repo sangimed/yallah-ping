@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { zipSync } from "fflate";
+import { ensureProjectDependencies } from "./bootstrap.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -13,6 +13,7 @@ const artifactsDir = path.join(rootDir, "artifacts");
 const packageJsonPath = path.join(rootDir, "package.json");
 
 const encoder = new TextEncoder();
+let zipSync;
 
 async function runBuild() {
   const result = spawnSync(process.execPath, [path.join(rootDir, "scripts/build.mjs")], {
@@ -96,6 +97,15 @@ function chromiumInstallGuide(browserName) {
 }
 
 async function main() {
+  await ensureProjectDependencies();
+
+  try {
+    ({ zipSync } = await import("fflate"));
+  } catch (error) {
+    console.error("Impossible de charger fflate. Verifiez l'installation des dependances avec `npm install`.");
+    throw error;
+  }
+
   await runBuild();
   await rm(artifactsDir, { recursive: true, force: true });
   await mkdir(artifactsDir, { recursive: true });

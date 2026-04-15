@@ -43,7 +43,7 @@ async function beginSelection() {
 
 function renderWatchActions(watch: WatchRecord): string {
   return `
-    <div class="row">
+    <div class="row action-row">
       <button class="secondary" data-action="toggle-watch" data-watch-id="${escapeHtml(watch.id)}">
         ${watch.enabled ? "Mettre en pause" : "Relancer"}
       </button>
@@ -56,11 +56,40 @@ function renderWatchActions(watch: WatchRecord): string {
 function render(state: AppState, currentTabTitle?: string, errorMessage?: string) {
   const activeAlerts = state.alerts.filter((alert) => !alert.acknowledgedAt);
   const watches = state.watches;
+  const monitoringCount = watches.filter((watch) => watch.enabled && watch.status !== "paused").length;
+  const pausedCount = watches.filter((watch) => !watch.enabled || watch.status === "paused").length;
 
   app.innerHTML = `
     <section class="hero">
-      <h1>Yallah Ping</h1>
-      <p>Surveillez une zone visible de votre application interne et recevez une alarme locale des qu'elle change.</p>
+      <div class="hero-grid">
+        <div class="stack">
+          <div class="eyebrow">Supervision visuelle locale</div>
+          <h1 class="hero-title">Yallah Ping</h1>
+          <p class="hero-copy">Surveillez une zone visible de votre application interne et recevez une alarme locale des qu'elle change.</p>
+          <div class="row hero-actions">
+            <button data-action="start-selection">Choisir sur la page</button>
+            <button class="secondary" data-action="open-options">Reglages</button>
+          </div>
+        </div>
+        <div class="stat-grid">
+          <div class="stat-card">
+            <span class="stat-value">${activeAlerts.length}</span>
+            <span class="stat-label">Alertes</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-value">${monitoringCount}</span>
+            <span class="stat-label">Surveillances actives</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-value">${pausedCount}</span>
+            <span class="stat-label">En pause</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-value">${watches.length}</span>
+            <span class="stat-label">Zones enregistrees</span>
+          </div>
+        </div>
+      </div>
     </section>
 
     ${
@@ -68,7 +97,7 @@ function render(state: AppState, currentTabTitle?: string, errorMessage?: string
         ? `<section class="banner alert stack">
             <strong>${activeAlerts.length} alerte${activeAlerts.length > 1 ? "s" : ""} en cours</strong>
             <div>Le son tourne jusqu'a un acquittement explicite.</div>
-            <div class="row">
+            <div class="row action-row">
               <button data-action="open-alert">Voir l'alerte</button>
               <button class="secondary" data-action="ack-all">Acquitter</button>
             </div>
@@ -86,19 +115,27 @@ function render(state: AppState, currentTabTitle?: string, errorMessage?: string
     }
 
     <section class="panel stack">
-      <div class="split">
-        <div>
+      <div class="section-head">
+        <div class="stack">
+          <div class="eyebrow">Etape 1</div>
           <h2>Nouvelle surveillance</h2>
           <p>${escapeHtml(currentTabTitle || "Choisissez une zone directement sur la page ouverte.")}</p>
         </div>
-        <button data-action="start-selection">Choisir sur la page</button>
       </div>
-      <div class="field-help">Un clic sur le bouton lance la selection visuelle dans l'onglet actif.</div>
+      <div class="feature-callout">
+        <div class="feature-copy">
+          <strong>Selection visuelle guidee</strong>
+          <span>Un clic lance la selection dans l'onglet actif. Survolez la zone voulue, cliquez, puis validez.</span>
+        </div>
+        <button data-action="start-selection">Lancer la selection</button>
+      </div>
+      <div class="field-help">Si rien ne se passe, rechargez l'extension puis l'onglet et recommencez.</div>
     </section>
 
     <section class="panel stack">
-      <div class="split">
-        <div>
+      <div class="section-head">
+        <div class="stack">
+          <div class="eyebrow">Tableau de bord</div>
           <h2>Surveillances actives</h2>
           <p>${watches.length ? "Gardez un oeil sur plusieurs zones en meme temps." : "Aucune surveillance pour le moment."}</p>
         </div>
@@ -109,13 +146,15 @@ function render(state: AppState, currentTabTitle?: string, errorMessage?: string
           ? watches
               .map(
                 (watch) => `
-                  <article class="watch-card">
-                    <div class="split">
-                      <div class="stack">
+                  <article class="watch-card status-${escapeHtml(watch.status)}">
+                    <div class="watch-title-row">
+                      <div class="watch-title-block">
+                        <div class="eyebrow">Zone surveillee</div>
                         <h3>${escapeHtml(watch.label)}</h3>
-                        ${renderWatchSummary(watch)}
+                        <div class="card-subtitle">${escapeHtml(watch.pageTitle || watch.pageUrl)}</div>
                       </div>
                     </div>
+                    ${renderWatchSummary(watch)}
                     ${renderWatchActions(watch)}
                   </article>
                 `

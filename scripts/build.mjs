@@ -1,7 +1,7 @@
-import { build, context } from "esbuild";
 import { cp, mkdir, rm } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
+import { ensureProjectDependencies } from "./bootstrap.mjs";
 
 const rootDir = process.cwd();
 const distDir = path.join(rootDir, "dist");
@@ -35,25 +35,37 @@ async function cleanDist() {
   await rm(distDir, { recursive: true, force: true });
 }
 
-async function runOneShot() {
+async function loadEsbuild() {
+  await ensureProjectDependencies();
+
+  try {
+    return await import("esbuild");
+  } catch (error) {
+    console.error("Impossible de charger esbuild. Verifiez l'installation des dependances avec `npm install`.");
+    throw error;
+  }
+}
+
+async function runOneShot(esbuild) {
   await cleanDist();
   await copyStaticFiles();
-  await build(sharedBuildOptions);
+  await esbuild.build(sharedBuildOptions);
   console.log("Build termine dans dist/");
 }
 
-async function runWatch() {
+async function runWatch(esbuild) {
   await cleanDist();
   await copyStaticFiles();
-  const buildContext = await context(sharedBuildOptions);
+  const buildContext = await esbuild.context(sharedBuildOptions);
   await buildContext.watch();
   console.log("Mode watch actif. Ctrl+C pour quitter.");
 }
 
 const isWatchMode = process.argv.includes("--watch");
+const esbuild = await loadEsbuild();
 
 if (isWatchMode) {
-  await runWatch();
+  await runWatch(esbuild);
 } else {
-  await runOneShot();
+  await runOneShot(esbuild);
 }

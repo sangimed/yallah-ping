@@ -4,9 +4,13 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "prebuild": "node scripts/bootstrap.mjs",
     "build": "node scripts/build.mjs",
+    "predev": "node scripts/bootstrap.mjs",
     "dev": "node scripts/build.mjs --watch",
+    "pretypecheck": "node scripts/bootstrap.mjs",
     "typecheck": "tsc --noEmit",
+    "prepackage": "node scripts/bootstrap.mjs",
     "package": "node scripts/package.mjs"
   },
   "devDependencies": {

@@ -6,13 +6,70 @@ import type {
   WatchStatus,
   WatchStatusUpdate
 } from "../types";
-import { sendRuntimeMessage } from "../shared/browser";
+import { sendRuntimeMessage as sendRuntimeMessageToExtension } from "../shared/browser";
 import { createId, normalizePageUrl } from "../shared/dom";
 import { buildSelectorDescriptor, describeElement, resolveElement } from "../shared/selectors";
 import { captureSnapshot, compareSnapshots } from "../shared/snapshot";
 
 const STYLE_ID = "yallah-ping-style";
 const OVERLAY_ID = "yallah-ping-overlay";
+const INSTANCE_KEY = "__yallahPingContentInstance__";
+
+type GlobalWindow = Window & {
+  [INSTANCE_KEY]?: {
+    dispose: () => void;
+  };
+};
+
+const globalWindow = window as GlobalWindow;
+let disposed = false;
+let removeUrlHooks: (() => void) | undefined;
+
+function isDisconnectedError(error: unknown): boolean {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  return (
+    error.message.includes("Extension context invalidated") ||
+    error.message.includes("Receiving end does not exist") ||
+    error.message.includes("The message port closed before a response was received")
+  );
+}
+
+function disposeContentInstance() {
+  if (disposed) {
+    return;
+  }
+
+  disposed = true;
+  selectionOverlay.stop();
+  for (const monitor of monitors.values()) {
+    monitor.stop();
+  }
+  monitors.clear();
+  removeUrlHooks?.();
+  removeUrlHooks = undefined;
+  chrome.runtime.onMessage.removeListener(handleRuntimeMessage);
+
+  if (globalWindow[INSTANCE_KEY]?.dispose === disposeContentInstance) {
+    delete globalWindow[INSTANCE_KEY];
+  }
+}
+
+async function safeSendRuntimeMessage<T>(message: Parameters<typeof sendRuntimeMessageToExtension>[0]): Promise<T | undefined> {
+  try {
+    return await sendRuntimeMessageToExtension<T>(message);
+  } catch (error) {
+    if (isDisconnectedError(error)) {
+      console.warn("Contexte extension invalide sur la page, arret local du content script.");
+      disposeContentInstance();
+      return undefined;
+    }
+
+    throw error;
+  }
+}
 
 class PageMutationHub {
   private callbacks = new Set<() => void>();
@@ -195,7 +252,7 @@ class WatchMonitor {
     this.lastReportedError = undefined;
     this.lastReportedAt = Date.now();
 
-    await sendRuntimeMessage({
+    await safeSendRuntimeMessage({
       type: "WATCH_TRIGGERED",
       payload: {
         watchId: this.watch.id,
@@ -234,7 +291,7 @@ class WatchMonitor {
       error
     };
 
-    await sendRuntimeMessage({
+    await safeSendRuntimeMessage({
       type: "WATCH_STATUS",
       payload
     });
@@ -550,10 +607,14 @@ class SelectionOverlay {
         snapshot
       };
 
-      await sendRuntimeMessage({
+      const result = await safeSendRuntimeMessage({
         type: "SAVE_WATCH",
         draft
       });
+
+      if (!result) {
+        return;
+      }
 
       this.stop();
     });
@@ -564,11 +625,15 @@ const selectionOverlay = new SelectionOverlay();
 const monitors = new Map<string, WatchMonitor>();
 
 async function registerCurrentPage() {
-  const response = await sendRuntimeMessage<{ watches: WatchRecord[] }>({
+  const response = await safeSendRuntimeMessage<{ watches: WatchRecord[] }>({
     type: "REGISTER_PAGE",
     pageUrl: normalizePageUrl(window.location.href),
     pageTitle: document.title
   });
+
+  if (!response || disposed) {
+    return;
+  }
 
   syncWatches(response.watches ?? []);
 }
@@ -597,6 +662,10 @@ function syncWatches(watches: WatchRecord[]) {
 
 function installUrlChangeHooks() {
   const notify = () => {
+    if (disposed) {
+      return;
+    }
+
     void registerCurrentPage();
   };
 
@@ -614,11 +683,22 @@ function installUrlChangeHooks() {
     rawReplaceState.apply(this, args);
     notify();
   };
+
+  return () => {
+    window.removeEventListener("popstate", notify);
+    window.removeEventListener("hashchange", notify);
+    history.pushState = rawPushState;
+    history.replaceState = rawReplaceState;
+  };
 }
 
-chrome.runtime.onMessage.addListener((message: MessageToContent, _sender, sendResponse) => {
+const handleRuntimeMessage = (message: MessageToContent, _sender: chrome.runtime.MessageSender, sendResponse: (response?: unknown) => void) => {
   Promise.resolve()
     .then(async () => {
+      if (disposed) {
+        return { ok: false, error: "Content script arrete." };
+      }
+
       switch (message.type) {
         case "START_SELECTION":
           selectionOverlay.start();
@@ -643,7 +723,13 @@ chrome.runtime.onMessage.addListener((message: MessageToContent, _sender, sendRe
     });
 
   return true;
-});
+};
 
-installUrlChangeHooks();
-void registerCurrentPage();
+if (!globalWindow[INSTANCE_KEY]) {
+  chrome.runtime.onMessage.addListener(handleRuntimeMessage);
+  removeUrlHooks = installUrlChangeHooks();
+  globalWindow[INSTANCE_KEY] = {
+    dispose: disposeContentInstance
+  };
+  void registerCurrentPage();
+}

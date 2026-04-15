@@ -28,19 +28,34 @@ function render(state: AppState) {
 
   app.innerHTML = `
     <section class="hero">
-      <h1>${activeAlerts.length ? "Alerte Yallah Ping" : "Tout est acquitte"}</h1>
-      <p>${
-        activeAlerts.length
-          ? "Le son reste actif jusqu'a acquittement explicite."
-          : "Aucune alerte en attente. Vous pouvez fermer cette fenetre."
-      }</p>
+      <div class="hero-grid">
+        <div class="stack">
+          <div class="eyebrow">${activeAlerts.length ? "Priorite immediate" : "Etat stable"}</div>
+          <h1 class="hero-title">${activeAlerts.length ? "Alerte Yallah Ping" : "Tout est acquitte"}</h1>
+          <p class="hero-copy">${
+            activeAlerts.length
+              ? "Le son reste actif jusqu'a acquittement explicite."
+              : "Aucune alerte en attente. Vous pouvez fermer cette fenetre."
+          }</p>
+        </div>
+        <div class="stat-grid">
+          <div class="stat-card">
+            <span class="stat-value">${activeAlerts.length}</span>
+            <span class="stat-label">Alertes actives</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-value">${recentAlerts.length}</span>
+            <span class="stat-label">Historique recent</span>
+          </div>
+        </div>
+      </div>
     </section>
 
     ${
       activeAlerts.length
         ? `<section class="banner alert stack">
             <strong>${activeAlerts.length} changement${activeAlerts.length > 1 ? "s" : ""} detecte${activeAlerts.length > 1 ? "s" : ""}</strong>
-            <div class="row">
+            <div class="row action-row">
               <button data-action="ack-all">Acquitter toutes les alertes</button>
             </div>
           </section>`
@@ -48,7 +63,12 @@ function render(state: AppState) {
     }
 
     <section class="panel stack">
-      <h2>Ce qui a change</h2>
+      <div class="section-head">
+        <div class="stack">
+          <div class="eyebrow">Analyse</div>
+          <h2>Ce qui a change</h2>
+        </div>
+      </div>
       ${
         activeAlerts.length
           ? activeAlerts.map((alert) => renderAlertCard(alert)).join("")
@@ -59,23 +79,36 @@ function render(state: AppState) {
     ${
       recentAlerts.length
         ? `<section class="panel stack">
-            <h2>Historique recent</h2>
+            <div class="section-head">
+              <div class="stack">
+                <div class="eyebrow">Memoire locale</div>
+                <h2>Historique recent</h2>
+              </div>
+            </div>
             ${recentAlerts
               .map(
                 (alert) => `
-                  <article class="watch-card">
-                    <div class="split">
-                      <div class="stack">
+                  <article class="watch-card status-idle">
+                    <div class="watch-title-row">
+                      <div class="watch-title-block">
+                        <div class="eyebrow">Alerte acquittee</div>
                         <h3>${alert.watchLabel}</h3>
-                        <div class="watch-meta">
-                          <div><strong>Declenchee :</strong> ${new Intl.DateTimeFormat("fr-FR", {
-                            dateStyle: "short",
-                            timeStyle: "medium"
-                          }).format(alert.triggeredAt)}</div>
-                          <div><strong>Resume :</strong> ${alert.summary.title}</div>
-                        </div>
+                        <div class="card-subtitle">${alert.summary.title}</div>
                       </div>
                       <button class="secondary" data-action="open-alert-page" data-url="${alert.pageUrl}">Ouvrir la page</button>
+                    </div>
+                    <div class="summary-grid">
+                      <div class="summary-item">
+                        <span class="summary-label">Declenchee</span>
+                        <span class="summary-value">${new Intl.DateTimeFormat("fr-FR", {
+                          dateStyle: "short",
+                          timeStyle: "medium"
+                        }).format(alert.triggeredAt)}</span>
+                      </div>
+                      <div class="summary-item">
+                        <span class="summary-label">Resume</span>
+                        <span class="summary-value">${alert.summary.title}</span>
+                      </div>
                     </div>
                   </article>
                 `

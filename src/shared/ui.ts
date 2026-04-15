@@ -41,20 +41,32 @@ export function statusClass(status: WatchStatus): string {
 }
 
 export function renderStatusPill(status: WatchStatus): string {
-  return `<span class="pill ${statusClass(status)}">${escapeHtml(statusLabel(status))}</span>`;
+  return `<span class="pill ${statusClass(status)}"><span class="pill-dot" aria-hidden="true"></span>${escapeHtml(statusLabel(status))}</span>`;
 }
 
 export function renderWatchSummary(watch: WatchRecord): string {
   return `
-    <div class="watch-meta">
-      <div>${renderStatusPill(watch.status)}</div>
-      <div><strong>Page :</strong> ${escapeHtml(watch.pageTitle || watch.pageUrl)}</div>
-      <div><strong>Derniere activite :</strong> ${escapeHtml(formatRelativeDelay(watch.lastSeenAt))}</div>
+    <div class="summary-grid">
+      <div class="summary-item">
+        <span class="summary-label">Etat</span>
+        <span class="summary-value">${renderStatusPill(watch.status)}</span>
+      </div>
+      <div class="summary-item">
+        <span class="summary-label">Derniere activite</span>
+        <span class="summary-value">${escapeHtml(formatRelativeDelay(watch.lastSeenAt))}</span>
+      </div>
       ${
         watch.lastChangeTitle
-          ? `<div><strong>Dernier changement :</strong> ${escapeHtml(watch.lastChangeTitle)}</div>`
+          ? `<div class="summary-item">
+              <span class="summary-label">Dernier changement</span>
+              <span class="summary-value">${escapeHtml(watch.lastChangeTitle)}</span>
+            </div>`
           : ""
       }
+      <div class="summary-item">
+        <span class="summary-label">Page</span>
+        <span class="summary-value">${escapeHtml(watch.pageTitle || watch.pageUrl)}</span>
+      </div>
     </div>
   `;
 }
@@ -71,26 +83,39 @@ export function renderAlertCard(alert: AlertRecord): string {
   const details = alert.summary.details.map((detail) => `<li>${escapeHtml(detail)}</li>`).join("");
 
   return `
-    <article class="alert-card" data-watch-id="${escapeHtml(alert.watchId)}">
-      <div class="split">
-        <div class="stack">
+    <article class="alert-card status-alert" data-watch-id="${escapeHtml(alert.watchId)}">
+      <div class="watch-title-row">
+        <div class="watch-title-block">
+          <div class="eyebrow">Changement detecte</div>
           <h3>${escapeHtml(alert.watchLabel)}</h3>
-          <div class="alert-meta">
-            <div><strong>Quand :</strong> ${escapeHtml(formatDateTime(alert.triggeredAt))}</div>
-            <div><strong>Page :</strong> ${escapeHtml(alert.pageTitle || alert.pageUrl)}</div>
-            <div><strong>Resume :</strong> ${escapeHtml(alert.summary.title)}</div>
-          </div>
+          <div class="card-subtitle">${escapeHtml(alert.summary.title)}</div>
         </div>
         <button class="secondary" data-action="ack-watch" data-watch-id="${escapeHtml(alert.watchId)}">Acquitter cette surveillance</button>
       </div>
-      <ul>${details}</ul>
+      <div class="summary-grid">
+        <div class="summary-item">
+          <span class="summary-label">Quand</span>
+          <span class="summary-value">${escapeHtml(formatDateTime(alert.triggeredAt))}</span>
+        </div>
+        <div class="summary-item">
+          <span class="summary-label">Page</span>
+          <span class="summary-value">${escapeHtml(alert.pageTitle || alert.pageUrl)}</span>
+        </div>
+        <div class="summary-item">
+          <span class="summary-label">Resume</span>
+          <span class="summary-value">${escapeHtml(alert.summary.title)}</span>
+        </div>
+      </div>
+      <ul class="detail-list">${details}</ul>
       <div class="diff-grid">
         ${
           added || removed
             ? `<div class="diff-box">
                 <h4>Lignes reperees</h4>
-                ${added || ""}
-                ${removed || ""}
+                <div class="diff-lines">
+                  ${added || ""}
+                  ${removed || ""}
+                </div>
               </div>`
             : ""
         }
