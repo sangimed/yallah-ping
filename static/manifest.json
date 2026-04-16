@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Yallah Ping",
   "version": "0.2.0",
-  "description": "Surveillance visuelle locale pour applications web internes sans notifications.",
+  "description": "Suivez une zone d'une page et recevez une alerte sonore quand elle change.",
   "permissions": ["storage", "tabs", "scripting", "unlimitedStorage"],
   "host_permissions": ["<all_urls>"],
   "action": {

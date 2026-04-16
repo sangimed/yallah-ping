@@ -515,7 +515,7 @@ class SelectionOverlay {
     this.hoveredElement = element;
     this.isConfirming = true;
     void this.showConfirmation(element).catch((error) => {
-      console.error("Impossible d'afficher la confirmation de surveillance", error);
+      console.error("Impossible d'afficher la confirmation de l'alerte", error);
       this.isConfirming = false;
     });
   };
@@ -556,9 +556,9 @@ class SelectionOverlay {
     const modal = document.createElement("div");
     modal.className = "yp-modal";
     modal.innerHTML = `
-      <h3>Ajouter cette surveillance</h3>
+      <h3>Ajouter une alerte</h3>
       <p>Cette zone sera suivie localement dans ce navigateur. Vous recevrez une alarme si elle change.</p>
-      <label for="yp-watch-name">Nom visible</label>
+      <label for="yp-watch-name">Nom de l'alerte</label>
       <input id="yp-watch-name" type="text" placeholder="${escapeHtml(defaultLabel)}" maxlength="90" />
       <div class="yp-actions">
         <button class="yp-primary" type="button">Enregistrer</button>

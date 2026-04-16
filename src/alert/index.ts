@@ -42,17 +42,17 @@ function render(state: AppState) {
     <section class="hero alert-hero">
       <div>
         <span class="eyebrow">${activeAlerts.length ? "Action requise" : "À jour"}</span>
-        <h1>${activeAlerts.length ? "Alerte active" : "Tout est acquitté"}</h1>
+        <h1>${activeAlerts.length ? "Alerte active" : "Tout est confirmé"}</h1>
         <p>${
           activeAlerts.length
-            ? "Le son reste actif jusqu'à acquittement explicite."
+            ? "La sonnerie reste active jusqu'à confirmation."
             : "Aucune alerte en attente. Vous pouvez fermer cette fenêtre."
         }</p>
       </div>
       <div class="hero-actions">
         ${
           activeAlerts.length
-            ? `<button data-action="ack-all">Acquitter toutes les alertes</button>`
+            ? `<button data-action="ack-all">Confirmer toutes les alertes</button>`
             : `<span class="pill ok">Calme</span>`
         }
       </div>
@@ -71,7 +71,7 @@ function render(state: AppState) {
               activeAlerts.length > 1 ? "s" : ""
             }</strong>
             <div class="row">
-              <button data-action="ack-all">Acquitter toutes les alertes</button>
+              <button data-action="ack-all">Confirmer toutes les alertes</button>
             </div>
           </section>`
         : `<section class="banner info">Aucune alerte active pour le moment.</section>`
@@ -80,7 +80,7 @@ function render(state: AppState) {
     <section class="panel stack">
       <div class="panel-header">
         <div>
-          <h2>Ce qui a change</h2>
+          <h2>Ce qui a changé</h2>
           <p>${activeAlerts.length ? "Comparez l'état avant et maintenant." : "Rien à traiter pour le moment."}</p>
         </div>
       </div>
@@ -96,8 +96,8 @@ function render(state: AppState) {
         ? `<section class="panel stack">
             <div class="panel-header">
               <div>
-                <h2>Historique recent</h2>
-                <p>Les cinq dernières alertes acquittées.</p>
+                <h2>Alertes passées</h2>
+                <p>Les cinq dernières alertes confirmées.</p>
               </div>
             </div>
             ${recentAlerts

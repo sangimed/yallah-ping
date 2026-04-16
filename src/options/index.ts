@@ -66,6 +66,20 @@ function renderPresetCard(presetId: AlarmPresetId, selectedPresetId: AlarmPreset
   `;
 }
 
+function renderThemeSwitch(state: AppState): string {
+  const themeMode = normalizeThemeMode(state.settings.themeMode);
+
+  return `
+    <label class="theme-switch" for="theme-toggle">
+      <input id="theme-toggle" type="checkbox" ${themeMode === "dark" ? "checked" : ""} />
+      <span class="theme-switch-track" aria-hidden="true">
+        <span class="theme-switch-thumb"></span>
+      </span>
+      <span>Mode sombre</span>
+    </label>
+  `;
+}
+
 function renderSoundSettings(state: AppState): string {
   const selectedPresetId = normalizeAlarmPresetId(state.settings.audioPresetId);
   const hasCustomAudio = Boolean(state.settings.customAudio?.dataUrl);
@@ -76,10 +90,10 @@ function renderSoundSettings(state: AppState): string {
     <section class="panel stack">
       <div class="panel-header">
         <div>
-          <h2>Son d'alarme</h2>
-          <p>Choix actif : ${escapeHtml(getAlarmDisplayName(state.settings))}</p>
+          <h2>Sonnerie</h2>
+          <p>Son choisi : ${escapeHtml(getAlarmDisplayName(state.settings))}</p>
         </div>
-        <button class="secondary" data-action="test-sound">Tester le choix actif</button>
+        <button class="secondary" data-action="test-sound">Tester</button>
       </div>
 
       <div class="sound-grid">
@@ -99,7 +113,7 @@ function renderSoundSettings(state: AppState): string {
           </div>
           <p>${escapeHtml(customName)}</p>
           <input id="custom-audio" type="file" accept=".mp3,.wav,.ogg,audio/mpeg,audio/wav,audio/ogg" />
-          <div class="field-help">Stockage local dans l'extension. Pas de sync cloud.</div>
+          <div class="field-help">Le fichier reste uniquement dans ce navigateur.</div>
           <div class="sound-card-actions">
             <button type="button" class="secondary compact" data-action="use-custom-sound" ${
               hasCustomAudio ? "" : "disabled"
@@ -120,32 +134,6 @@ function renderSoundSettings(state: AppState): string {
         <input id="alarm-volume" type="range" min="0.1" max="1" step="0.05" value="${escapeHtml(
           String(state.settings.alertVolume)
         )}" />
-      </div>
-    </section>
-  `;
-}
-
-function renderAppearanceSettings(state: AppState): string {
-  const themeMode = normalizeThemeMode(state.settings.themeMode);
-
-  return `
-    <section class="panel stack">
-      <div class="panel-header">
-        <div>
-          <h2>Apparence</h2>
-          <p>Le choix est conservé localement, même après redémarrage du navigateur.</p>
-        </div>
-      </div>
-
-      <div class="segmented-control" role="radiogroup" aria-label="Thème de l'interface">
-        <label class="${themeMode === "light" ? "is-selected" : ""}">
-          <input name="theme-mode" type="radio" value="light" ${themeMode === "light" ? "checked" : ""} />
-          <span>Clair</span>
-        </label>
-        <label class="${themeMode === "dark" ? "is-selected" : ""}">
-          <input name="theme-mode" type="radio" value="dark" ${themeMode === "dark" ? "checked" : ""} />
-          <span>Sombre</span>
-        </label>
       </div>
     </section>
   `;
@@ -173,12 +161,12 @@ function renderWatchEditor(watch: WatchRecord): string {
 
       <div class="form-grid two-column">
         <div>
-          <label for="label-${watchId}">Nom visible</label>
+          <label for="label-${watchId}">Nom de l'alerte</label>
           <input id="label-${watchId}" data-field="label" type="text" value="${escapeHtml(watch.label)}" />
         </div>
 
         <div>
-          <label for="poll-${watchId}">Vérification régulière</label>
+          <label for="poll-${watchId}">Contrôle automatique</label>
           <div class="input-with-unit">
             <input id="poll-${watchId}" data-field="pollIntervalMs" type="number" min="2" step="1" value="${msToSeconds(
               watch.pollIntervalMs
@@ -188,7 +176,7 @@ function renderWatchEditor(watch: WatchRecord): string {
         </div>
 
         <div>
-          <label for="debounce-${watchId}">Stabilisation</label>
+          <label for="debounce-${watchId}">Petite pause avant sonnerie</label>
           <div class="input-with-unit">
             <input id="debounce-${watchId}" data-field="mutationDebounceMs" type="number" min="150" step="50" value="${escapeHtml(
               String(watch.mutationDebounceMs)
@@ -199,7 +187,7 @@ function renderWatchEditor(watch: WatchRecord): string {
 
         <div class="toggle-row field-toggle">
           <input id="enabled-${watchId}" data-field="enabled" type="checkbox" ${watch.enabled ? "checked" : ""} />
-          <label for="enabled-${watchId}">Surveillance active</label>
+          <label for="enabled-${watchId}">Zone active</label>
         </div>
       </div>
 
@@ -208,14 +196,14 @@ function renderWatchEditor(watch: WatchRecord): string {
           <input id="mutation-${watchId}" data-field="useMutationObserver" type="checkbox" ${
             watch.useMutationObserver ? "checked" : ""
           } />
-          <label for="mutation-${watchId}">Réaction immédiate aux changements visibles</label>
+          <label for="mutation-${watchId}">Sonner dès que la page change</label>
         </div>
 
         <div class="toggle-row">
           <input id="polling-${watchId}" data-field="usePolling" type="checkbox" ${
             watch.usePolling ? "checked" : ""
           } />
-          <label for="polling-${watchId}">Vérification régulière même si rien ne bouge</label>
+          <label for="polling-${watchId}">Revérifier régulièrement</label>
         </div>
       </div>
     </article>
@@ -229,25 +217,26 @@ function render(state: AppState) {
   app.innerHTML = `
     <section class="hero">
       <div>
-        <span class="eyebrow">Réglages locaux</span>
+        <span class="eyebrow">Réglages</span>
         <h1>Yallah Ping</h1>
-        <p>Une surveillance locale, sans compte, sans backend, sans sync cloud.</p>
+        <p>Choisissez ce que l'extension suit, comment elle sonne et comment elle s'affiche.</p>
       </div>
       <div class="hero-actions">
+        ${renderThemeSwitch(state)}
         <button class="secondary" data-action="open-alert" ${activeAlerts.length ? "" : "disabled"}>Écran d'alerte</button>
       </div>
     </section>
 
     <section class="metric-strip">
       ${renderMetric(
-        "Surveillances",
+        "Zones suivies",
         String(state.watches.length),
         `${activeWatches.length} active${activeWatches.length > 1 ? "s" : ""}`
       )}
       ${renderMetric(
         "Alertes",
         String(activeAlerts.length),
-        activeAlerts.length ? "à acquitter" : "rien en attente"
+        activeAlerts.length ? "à confirmer" : "rien en attente"
       )}
       ${renderMetric("Son", getAlarmDisplayName(state.settings), formatVolume(state.settings.alertVolume))}
     </section>
@@ -258,57 +247,55 @@ function render(state: AppState) {
             <strong>${activeAlerts.length} ${pluralize(activeAlerts.length, "alerte active", "alertes actives")}</strong>
             <div class="row">
               <button data-action="open-alert">Voir l'écran d'alerte</button>
-              <button class="secondary" data-action="ack-all">Acquitter maintenant</button>
+              <button class="secondary" data-action="ack-all">Confirmer maintenant</button>
             </div>
           </section>`
         : ""
     }
-
-    ${renderAppearanceSettings(state)}
 
     ${renderSoundSettings(state)}
 
     <section class="panel stack">
       <div class="panel-header">
         <div>
-          <h2>Comportement par défaut</h2>
-          <p>Ces valeurs seront appliquées aux nouvelles surveillances.</p>
+          <h2>Réglages des nouvelles zones</h2>
+          <p>Ces valeurs seront appliquées aux prochaines zones que vous ajouterez.</p>
         </div>
         <button data-action="save-defaults">Enregistrer</button>
       </div>
 
       <div class="form-grid two-column">
         <div>
-          <label for="default-poll">Vérification régulière</label>
+          <label for="default-poll">Contrôle automatique</label>
           <div class="input-with-unit">
             <input id="default-poll" type="number" min="2" step="1" value="${msToSeconds(
               state.settings.defaultPollIntervalMs
             )}" />
             <span>sec</span>
           </div>
-          <div class="field-help">Utile si aucun mouvement visible n'apparaît dans le DOM.</div>
+          <div class="field-help">L'extension regarde à nouveau la zone après ce délai.</div>
         </div>
         <div>
-          <label for="default-debounce">Temps de stabilisation</label>
+          <label for="default-debounce">Petite pause avant sonnerie</label>
           <div class="input-with-unit">
             <input id="default-debounce" type="number" min="150" step="50" value="${escapeHtml(
               String(state.settings.defaultMutationDebounceMs)
             )}" />
             <span>ms</span>
           </div>
-          <div class="field-help">Évite de sonner pendant des rafraîchissements rapides.</div>
+          <div class="field-help">Évite de sonner trop vite quand la page se met à jour plusieurs fois.</div>
         </div>
       </div>
 
       <div class="toggle-grid">
         <div class="toggle-row">
           <input id="default-mutation" type="checkbox" ${state.settings.defaultUseMutationObserver ? "checked" : ""} />
-          <label for="default-mutation">Réaction immédiate aux changements visibles</label>
+          <label for="default-mutation">Sonner dès que la page change</label>
         </div>
 
         <div class="toggle-row">
           <input id="default-polling" type="checkbox" ${state.settings.defaultUsePolling ? "checked" : ""} />
-          <label for="default-polling">Vérification régulière en continu</label>
+          <label for="default-polling">Revérifier régulièrement</label>
         </div>
       </div>
     </section>
@@ -316,8 +303,8 @@ function render(state: AppState) {
     <section class="panel stack">
       <div class="panel-header">
         <div>
-          <h2>Surveillances</h2>
-          <p>${state.watches.length ? "Ajustez chaque zone surveillée." : "Aucune surveillance enregistrée."}</p>
+          <h2>Zones suivies</h2>
+          <p>${state.watches.length ? "Ajustez les zones que vous voulez suivre." : "Aucune zone suivie pour le moment."}</p>
         </div>
       </div>
       ${
@@ -368,24 +355,19 @@ async function testSound(settings: AppState["settings"]) {
 }
 
 function wireActions(state: AppState) {
-  app.querySelectorAll<HTMLInputElement>('input[name="theme-mode"]').forEach((input) => {
-    input.addEventListener("change", async () => {
-      if (!input.checked) {
-        return;
-      }
+  app.querySelector<HTMLInputElement>("#theme-toggle")?.addEventListener("change", async (event) => {
+    const input = event.currentTarget as HTMLInputElement;
+    const themeMode = normalizeThemeMode(input.checked ? "dark" : "light");
+    applyTheme({
+      ...state.settings,
+      themeMode
+    });
 
-      const themeMode = normalizeThemeMode(input.value);
-      applyTheme({
-        ...state.settings,
+    await sendRuntimeMessage({
+      type: "SAVE_SETTINGS",
+      patch: {
         themeMode
-      });
-
-      await sendRuntimeMessage({
-        type: "SAVE_SETTINGS",
-        patch: {
-          themeMode
-        }
-      });
+      }
     });
   });
 

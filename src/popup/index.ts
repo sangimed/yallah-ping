@@ -74,7 +74,7 @@ function render(state: AppState, currentTabTitle?: string, errorMessage?: string
     <section class="hero popup-hero">
       <div>
         <span class="eyebrow">Yallah Ping</span>
-        <h1>Surveillance locale</h1>
+        <h1>Suivre une zone</h1>
         <p>${escapeHtml(currentTabTitle || "Choisissez une zone sur l'onglet actif.")}</p>
       </div>
       <div>${
@@ -88,10 +88,10 @@ function render(state: AppState, currentTabTitle?: string, errorMessage?: string
       activeAlerts.length
         ? `<section class="banner alert stack">
             <strong>${activeAlerts.length} alerte${activeAlerts.length > 1 ? "s" : ""} en cours</strong>
-            <div>Le son tourne jusqu'à un acquittement explicite.</div>
+            <div>La sonnerie continue jusqu'à confirmation.</div>
             <div class="row">
               <button data-action="open-alert">Voir l'alerte</button>
-              <button class="secondary" data-action="ack-all">Acquitter</button>
+              <button class="secondary" data-action="ack-all">Confirmer</button>
             </div>
           </section>`
         : ""
@@ -108,8 +108,8 @@ function render(state: AppState, currentTabTitle?: string, errorMessage?: string
 
     <section class="panel stack start-panel">
       <div>
-        <h2>Nouvelle surveillance</h2>
-        <p>Sélectionnez visuellement la zone à suivre sur la page ouverte.</p>
+        <h2>Nouvelle alerte</h2>
+        <p>Choisissez la zone de la page qui doit déclencher une sonnerie quand elle change.</p>
       </div>
       <button data-action="start-selection">Choisir sur la page</button>
     </section>
@@ -123,10 +123,10 @@ function render(state: AppState, currentTabTitle?: string, errorMessage?: string
     <section class="panel stack">
       <div class="panel-header">
         <div>
-          <h2>Surveillances</h2>
-          <p>${watches.length ? "État rapide des zones suivies." : "Aucune zone suivie pour le moment."}</p>
+          <h2>Zones suivies</h2>
+          <p>${watches.length ? "Vos zones suivies." : "Aucune zone suivie pour le moment."}</p>
         </div>
-        <button class="secondary compact" data-action="open-options">Tout régler</button>
+        <button class="secondary compact" data-action="open-options">Réglages</button>
       </div>
       ${
         watches.length

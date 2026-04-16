@@ -13,7 +13,7 @@ export function escapeHtml(input: string): string {
 export function statusLabel(status: WatchStatus): string {
   switch (status) {
     case "monitoring":
-      return "Sous surveillance";
+      return "Actif";
     case "alert":
       return "Alerte active";
     case "missing":
@@ -81,7 +81,7 @@ export function renderAlertCard(alert: AlertRecord): string {
             <div><strong>Résumé :</strong> ${escapeHtml(alert.summary.title)}</div>
           </div>
         </div>
-        <button class="secondary" data-action="ack-watch" data-watch-id="${escapeHtml(alert.watchId)}">Acquitter cette surveillance</button>
+        <button class="secondary" data-action="ack-watch" data-watch-id="${escapeHtml(alert.watchId)}">Confirmer cette alerte</button>
       </div>
       <ul>${details}</ul>
       <div class="diff-grid">
