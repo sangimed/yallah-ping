@@ -1,6 +1,7 @@
-import type { AppState, StoredAudio, WatchRecord } from "../types";
+import type { AlarmPresetId, AppState, StoredAudio, WatchRecord } from "../types";
 import { createTab, sendRuntimeMessage } from "../shared/browser";
-import { AlarmPlayer } from "../shared/audio";
+import { ALARM_PRESETS, normalizeAlarmPresetId } from "../shared/alarm-presets";
+import { AlarmPlayer, getAlarmDisplayName } from "../shared/audio";
 import { loadState } from "../shared/storage";
 import { formatDateTime } from "../shared/time";
 import { escapeHtml, renderStatusPill } from "../shared/ui";
@@ -19,62 +20,175 @@ function msToSeconds(value: number): number {
   return Math.round(value / 1000);
 }
 
-function renderWatchEditor(watch: WatchRecord): string {
+function formatVolume(value: number): string {
+  return `${Math.round(value * 100)}%`;
+}
+
+function pluralize(count: number, singular: string, plural: string): string {
+  return count > 1 ? plural : singular;
+}
+
+function renderMetric(label: string, value: string, detail: string): string {
   return `
-    <article class="watch-card" data-watch-id="${escapeHtml(watch.id)}">
-      <div class="split">
-        <div class="stack">
+    <div class="metric">
+      <span>${escapeHtml(label)}</span>
+      <strong>${escapeHtml(value)}</strong>
+      <small>${escapeHtml(detail)}</small>
+    </div>
+  `;
+}
+
+function renderPresetCard(presetId: AlarmPresetId, selectedPresetId: AlarmPresetId, customSelected: boolean): string {
+  const preset = ALARM_PRESETS.find((item) => item.id === presetId) ?? ALARM_PRESETS[0];
+  const inputId = `sound-${preset.id}`;
+  const selected = !customSelected && selectedPresetId === preset.id;
+
+  return `
+    <article class="sound-card ${selected ? "is-selected" : ""}">
+      <div class="sound-card-head">
+        <input
+          id="${escapeHtml(inputId)}"
+          name="alarm-sound"
+          type="radio"
+          value="preset:${escapeHtml(preset.id)}"
+          ${selected ? "checked" : ""}
+        />
+        <label for="${escapeHtml(inputId)}">${escapeHtml(preset.name)}</label>
+      </div>
+      <p>${escapeHtml(preset.description)}</p>
+      <div class="sound-card-actions">
+        <button type="button" class="secondary compact" data-action="preview-preset" data-preset-id="${escapeHtml(
+          preset.id
+        )}">Tester</button>
+      </div>
+    </article>
+  `;
+}
+
+function renderSoundSettings(state: AppState): string {
+  const selectedPresetId = normalizeAlarmPresetId(state.settings.audioPresetId);
+  const hasCustomAudio = Boolean(state.settings.customAudio?.dataUrl);
+  const customSelected = state.settings.audioMode === "custom" && hasCustomAudio;
+  const customName = state.settings.customAudio?.name ?? "Aucun fichier importé";
+
+  return `
+    <section class="panel stack">
+      <div class="panel-header">
+        <div>
+          <h2>Son d'alarme</h2>
+          <p>Choix actif : ${escapeHtml(getAlarmDisplayName(state.settings))}</p>
+        </div>
+        <button class="secondary" data-action="test-sound">Tester le choix actif</button>
+      </div>
+
+      <div class="sound-grid">
+        ${ALARM_PRESETS.map((preset) => renderPresetCard(preset.id, selectedPresetId, customSelected)).join("")}
+
+        <article class="sound-card ${customSelected ? "is-selected" : ""}">
+          <div class="sound-card-head">
+            <input
+              id="sound-custom"
+              name="alarm-sound"
+              type="radio"
+              value="custom"
+              ${customSelected ? "checked" : ""}
+              ${hasCustomAudio ? "" : "disabled"}
+            />
+            <label for="sound-custom">Fichier perso</label>
+          </div>
+          <p>${escapeHtml(customName)}</p>
+          <input id="custom-audio" type="file" accept=".mp3,.wav,.ogg,audio/mpeg,audio/wav,audio/ogg" />
+          <div class="field-help">Stockage local dans l'extension. Pas de sync cloud.</div>
+          <div class="sound-card-actions">
+            <button type="button" class="secondary compact" data-action="use-custom-sound" ${
+              hasCustomAudio ? "" : "disabled"
+            }>Utiliser</button>
+            <button type="button" class="secondary compact" data-action="preview-custom" ${
+              hasCustomAudio ? "" : "disabled"
+            }>Tester</button>
+            <button type="button" class="ghost compact" data-action="remove-custom-sound" ${
+              hasCustomAudio ? "" : "disabled"
+            }>Retirer</button>
+          </div>
+        </article>
+      </div>
+
+      <div class="volume-row">
+        <label for="alarm-volume">Volume</label>
+        <span id="alarm-volume-value" class="volume-value">${escapeHtml(formatVolume(state.settings.alertVolume))}</span>
+        <input id="alarm-volume" type="range" min="0.1" max="1" step="0.05" value="${escapeHtml(
+          String(state.settings.alertVolume)
+        )}" />
+      </div>
+    </section>
+  `;
+}
+
+function renderWatchEditor(watch: WatchRecord): string {
+  const watchId = escapeHtml(watch.id);
+
+  return `
+    <article class="watch-card" data-watch-id="${watchId}">
+      <div class="card-header">
+        <div class="stack compact-stack">
+          <div>${renderStatusPill(watch.status)}</div>
           <h3>${escapeHtml(watch.label)}</h3>
           <div class="watch-meta">
-            <div>${renderStatusPill(watch.status)}</div>
             <div><strong>Page :</strong> ${escapeHtml(watch.pageTitle || watch.pageUrl)}</div>
-            <div><strong>Derniere verification :</strong> ${escapeHtml(formatDateTime(watch.lastSeenAt))}</div>
+            <div><strong>Dernière vérification :</strong> ${escapeHtml(formatDateTime(watch.lastSeenAt))}</div>
           </div>
         </div>
-        <div class="row">
-          <button class="secondary" data-action="open-page" data-url="${escapeHtml(watch.pageUrl)}">Ouvrir</button>
-          <button class="danger" data-action="delete-watch" data-watch-id="${escapeHtml(watch.id)}">Supprimer</button>
+        <div class="card-actions">
+          <button class="secondary compact" data-action="open-page" data-url="${escapeHtml(watch.pageUrl)}">Ouvrir</button>
+          <button class="danger compact" data-action="delete-watch" data-watch-id="${watchId}">Supprimer</button>
         </div>
       </div>
 
-      <div class="form-grid">
+      <div class="form-grid two-column">
         <div>
-          <label for="label-${escapeHtml(watch.id)}">Nom visible</label>
-          <input id="label-${escapeHtml(watch.id)}" data-field="label" type="text" value="${escapeHtml(watch.label)}" />
+          <label for="label-${watchId}">Nom visible</label>
+          <input id="label-${watchId}" data-field="label" type="text" value="${escapeHtml(watch.label)}" />
         </div>
 
-        <div class="toggle-row">
-          <input id="enabled-${escapeHtml(watch.id)}" data-field="enabled" type="checkbox" ${watch.enabled ? "checked" : ""} />
-          <label for="enabled-${escapeHtml(watch.id)}">Surveillance active</label>
-        </div>
-
-        <div class="row">
-          <div style="flex: 1 1 180px;">
-            <label for="poll-${escapeHtml(watch.id)}">Verification reguliere (secondes)</label>
-            <input id="poll-${escapeHtml(watch.id)}" data-field="pollIntervalMs" type="number" min="2" step="1" value="${msToSeconds(
+        <div>
+          <label for="poll-${watchId}">Vérification régulière</label>
+          <div class="input-with-unit">
+            <input id="poll-${watchId}" data-field="pollIntervalMs" type="number" min="2" step="1" value="${msToSeconds(
               watch.pollIntervalMs
             )}" />
+            <span>sec</span>
           </div>
-          <div style="flex: 1 1 180px;">
-            <label for="debounce-${escapeHtml(watch.id)}">Temps de stabilisation (ms)</label>
-            <input id="debounce-${escapeHtml(watch.id)}" data-field="mutationDebounceMs" type="number" min="150" step="50" value="${escapeHtml(
+        </div>
+
+        <div>
+          <label for="debounce-${watchId}">Stabilisation</label>
+          <div class="input-with-unit">
+            <input id="debounce-${watchId}" data-field="mutationDebounceMs" type="number" min="150" step="50" value="${escapeHtml(
               String(watch.mutationDebounceMs)
             )}" />
+            <span>ms</span>
           </div>
         </div>
 
+        <div class="toggle-row field-toggle">
+          <input id="enabled-${watchId}" data-field="enabled" type="checkbox" ${watch.enabled ? "checked" : ""} />
+          <label for="enabled-${watchId}">Surveillance active</label>
+        </div>
+      </div>
+
+      <div class="toggle-grid">
         <div class="toggle-row">
-          <input id="mutation-${escapeHtml(watch.id)}" data-field="useMutationObserver" type="checkbox" ${
+          <input id="mutation-${watchId}" data-field="useMutationObserver" type="checkbox" ${
             watch.useMutationObserver ? "checked" : ""
           } />
-          <label for="mutation-${escapeHtml(watch.id)}">Reaction immediate aux changements visibles</label>
+          <label for="mutation-${watchId}">Réaction immédiate aux changements visibles</label>
         </div>
 
         <div class="toggle-row">
-          <input id="polling-${escapeHtml(watch.id)}" data-field="usePolling" type="checkbox" ${
+          <input id="polling-${watchId}" data-field="usePolling" type="checkbox" ${
             watch.usePolling ? "checked" : ""
           } />
-          <label for="polling-${escapeHtml(watch.id)}">Verification reguliere meme si rien ne bouge a l'ecran</label>
+          <label for="polling-${watchId}">Vérification régulière même si rien ne bouge</label>
         </div>
       </div>
     </article>
@@ -83,97 +197,104 @@ function renderWatchEditor(watch: WatchRecord): string {
 
 function render(state: AppState) {
   const activeAlerts = state.alerts.filter((alert) => !alert.acknowledgedAt);
-  const audioName =
-    state.settings.audioMode === "custom" && state.settings.customAudio
-      ? `Son personnalise : ${state.settings.customAudio.name}`
-      : "Son integre tres fort";
+  const activeWatches = state.watches.filter((watch) => watch.enabled);
 
   app.innerHTML = `
     <section class="hero">
-      <h1>Reglages Yallah Ping</h1>
-      <p>Tout fonctionne localement dans ce navigateur. Aucun backend, aucune dependance Internet pour surveiller la page.</p>
+      <div>
+        <span class="eyebrow">Réglages locaux</span>
+        <h1>Yallah Ping</h1>
+        <p>Une surveillance locale, sans compte, sans backend, sans sync cloud.</p>
+      </div>
+      <div class="hero-actions">
+        <button class="secondary" data-action="open-alert" ${activeAlerts.length ? "" : "disabled"}>Écran d'alerte</button>
+      </div>
+    </section>
+
+    <section class="metric-strip">
+      ${renderMetric(
+        "Surveillances",
+        String(state.watches.length),
+        `${activeWatches.length} active${activeWatches.length > 1 ? "s" : ""}`
+      )}
+      ${renderMetric(
+        "Alertes",
+        String(activeAlerts.length),
+        activeAlerts.length ? "à acquitter" : "rien en attente"
+      )}
+      ${renderMetric("Son", getAlarmDisplayName(state.settings), formatVolume(state.settings.alertVolume))}
     </section>
 
     ${
       activeAlerts.length
         ? `<section class="banner alert stack">
-            <strong>${activeAlerts.length} alerte${activeAlerts.length > 1 ? "s" : ""} encore active${activeAlerts.length > 1 ? "s" : ""}</strong>
+            <strong>${activeAlerts.length} ${pluralize(activeAlerts.length, "alerte active", "alertes actives")}</strong>
             <div class="row">
-              <button data-action="open-alert">Voir l'ecran d'alerte</button>
+              <button data-action="open-alert">Voir l'écran d'alerte</button>
               <button class="secondary" data-action="ack-all">Acquitter maintenant</button>
             </div>
           </section>`
         : ""
     }
 
+    ${renderSoundSettings(state)}
+
     <section class="panel stack">
-      <h2>Comportement par defaut</h2>
-      <div class="form-grid">
-        <div class="row">
-          <div style="flex: 1 1 220px;">
-            <label for="default-poll">Verification reguliere (secondes)</label>
+      <div class="panel-header">
+        <div>
+          <h2>Comportement par défaut</h2>
+          <p>Ces valeurs seront appliquées aux nouvelles surveillances.</p>
+        </div>
+        <button data-action="save-defaults">Enregistrer</button>
+      </div>
+
+      <div class="form-grid two-column">
+        <div>
+          <label for="default-poll">Vérification régulière</label>
+          <div class="input-with-unit">
             <input id="default-poll" type="number" min="2" step="1" value="${msToSeconds(
               state.settings.defaultPollIntervalMs
             )}" />
-            <div class="field-help">Utile si la page est reactive ou si aucun mouvement visible n'apparait dans le DOM.</div>
+            <span>sec</span>
           </div>
-          <div style="flex: 1 1 220px;">
-            <label for="default-debounce">Temps de stabilisation (ms)</label>
+          <div class="field-help">Utile si aucun mouvement visible n'apparaît dans le DOM.</div>
+        </div>
+        <div>
+          <label for="default-debounce">Temps de stabilisation</label>
+          <div class="input-with-unit">
             <input id="default-debounce" type="number" min="150" step="50" value="${escapeHtml(
               String(state.settings.defaultMutationDebounceMs)
             )}" />
-            <div class="field-help">Evite de sonner pendant les rafraichissements tres rapides.</div>
+            <span>ms</span>
           </div>
+          <div class="field-help">Évite de sonner pendant des rafraîchissements rapides.</div>
         </div>
+      </div>
 
+      <div class="toggle-grid">
         <div class="toggle-row">
           <input id="default-mutation" type="checkbox" ${state.settings.defaultUseMutationObserver ? "checked" : ""} />
-          <label for="default-mutation">Reaction immediate aux changements visibles</label>
+          <label for="default-mutation">Réaction immédiate aux changements visibles</label>
         </div>
 
         <div class="toggle-row">
           <input id="default-polling" type="checkbox" ${state.settings.defaultUsePolling ? "checked" : ""} />
-          <label for="default-polling">Verification reguliere en continu</label>
+          <label for="default-polling">Vérification régulière en continu</label>
         </div>
-      </div>
-      <div class="row">
-        <button data-action="save-defaults">Enregistrer ces valeurs</button>
       </div>
     </section>
 
     <section class="panel stack">
-      <h2>Son d'alarme</h2>
-      <p>${escapeHtml(audioName)}</p>
-      <div class="form-grid">
-        <div>
-          <label for="custom-audio">Importer un MP3 personnalise</label>
-          <input id="custom-audio" type="file" accept=".mp3,audio/mpeg" />
-          <div class="field-help">Le fichier reste stocke localement dans l'extension.</div>
-        </div>
-        <div>
-          <label for="alarm-volume">Volume</label>
-          <input id="alarm-volume" type="range" min="0.1" max="1" step="0.05" value="${escapeHtml(
-            String(state.settings.alertVolume)
-          )}" />
-        </div>
-      </div>
-      <div class="row">
-        <button class="secondary" data-action="test-sound">Tester le son</button>
-        <button class="secondary" data-action="use-default-sound">Revenir au son integre</button>
-      </div>
-    </section>
-
-    <section class="panel stack">
-      <div class="split">
+      <div class="panel-header">
         <div>
           <h2>Surveillances</h2>
-          <p>${state.watches.length ? "Chaque carte correspond a une zone surveillee." : "Aucune surveillance enregistree."}</p>
+          <p>${state.watches.length ? "Ajustez chaque zone surveillée." : "Aucune surveillance enregistrée."}</p>
         </div>
       </div>
       ${
         state.watches.length
           ? state.watches.map((watch) => renderWatchEditor(watch)).join("")
-          : `<div class="empty-state">Commencez depuis le popup de l'extension avec le bouton <strong>Choisir sur la page</strong>.</div>`
+          : `<div class="empty-state">Commencez depuis le popup avec le bouton <strong>Choisir sur la page</strong>.</div>`
       }
     </section>
   `;
@@ -235,6 +356,33 @@ function wireActions(state: AppState) {
     });
   });
 
+  app.querySelectorAll<HTMLInputElement>('input[name="alarm-sound"]').forEach((input) => {
+    input.addEventListener("change", async () => {
+      if (!input.checked) {
+        return;
+      }
+
+      if (input.value === "custom") {
+        await sendRuntimeMessage({
+          type: "SAVE_SETTINGS",
+          patch: {
+            audioMode: "custom"
+          }
+        });
+        return;
+      }
+
+      const presetId = normalizeAlarmPresetId(input.value.replace("preset:", ""));
+      await sendRuntimeMessage({
+        type: "SAVE_SETTINGS",
+        patch: {
+          audioMode: "preset",
+          audioPresetId: presetId
+        }
+      });
+    });
+  });
+
   app.querySelector<HTMLInputElement>("#custom-audio")?.addEventListener("change", async (event) => {
     const input = event.currentTarget as HTMLInputElement;
     const file = input.files?.[0];
@@ -244,6 +392,14 @@ function wireActions(state: AppState) {
 
     await uploadCustomAudio(file);
     input.value = "";
+  });
+
+  app.querySelector<HTMLInputElement>("#alarm-volume")?.addEventListener("input", (event) => {
+    const input = event.currentTarget as HTMLInputElement;
+    const valueElement = document.getElementById("alarm-volume-value");
+    if (valueElement) {
+      valueElement.textContent = formatVolume(Number(input.value));
+    }
   });
 
   app.querySelector<HTMLInputElement>("#alarm-volume")?.addEventListener("change", async (event) => {
@@ -260,11 +416,42 @@ function wireActions(state: AppState) {
     await testSound(state.settings);
   });
 
-  app.querySelector('[data-action="use-default-sound"]')?.addEventListener("click", async () => {
+  app.querySelectorAll<HTMLButtonElement>('[data-action="preview-preset"]').forEach((button) => {
+    button.addEventListener("click", async () => {
+      const presetId = normalizeAlarmPresetId(button.dataset.presetId);
+      await testSound({
+        ...state.settings,
+        audioMode: "preset",
+        audioPresetId: presetId
+      });
+    });
+  });
+
+  app.querySelector('[data-action="preview-custom"]')?.addEventListener("click", async () => {
+    if (!state.settings.customAudio) {
+      return;
+    }
+
+    await testSound({
+      ...state.settings,
+      audioMode: "custom"
+    });
+  });
+
+  app.querySelector('[data-action="use-custom-sound"]')?.addEventListener("click", async () => {
     await sendRuntimeMessage({
       type: "SAVE_SETTINGS",
       patch: {
-        audioMode: "default",
+        audioMode: "custom"
+      }
+    });
+  });
+
+  app.querySelector('[data-action="remove-custom-sound"]')?.addEventListener("click", async () => {
+    await sendRuntimeMessage({
+      type: "SAVE_SETTINGS",
+      patch: {
+        audioMode: "preset",
         customAudio: undefined
       }
     });

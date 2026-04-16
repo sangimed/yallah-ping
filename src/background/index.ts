@@ -8,6 +8,7 @@ import type {
   RuntimeMessage,
   WatchRecord
 } from "../types";
+import { normalizeAlarmPresetId } from "../shared/alarm-presets";
 import {
   createTab,
   createWindow,
@@ -36,9 +37,21 @@ function getActiveAlerts(alerts: AlertRecord[]): AlertRecord[] {
 }
 
 function sanitizeSettingsPatch(patch: Partial<AppSettings>, current: AppSettings): AppSettings {
+  const hasCustomAudioPatch = Object.prototype.hasOwnProperty.call(patch, "customAudio");
+  const customAudio = hasCustomAudioPatch ? patch.customAudio : current.customAudio;
+  const rawAudioMode = patch.audioMode ?? current.audioMode;
+  let audioMode: AppSettings["audioMode"] = rawAudioMode === "custom" ? "custom" : "preset";
+
+  if (audioMode === "custom" && !customAudio?.dataUrl) {
+    audioMode = "preset";
+  }
+
   const nextSettings: AppSettings = {
     ...current,
     ...patch,
+    audioMode,
+    audioPresetId: normalizeAlarmPresetId(patch.audioPresetId ?? current.audioPresetId),
+    customAudio,
     defaultPollIntervalMs: Math.max(2000, Number(patch.defaultPollIntervalMs ?? current.defaultPollIntervalMs)),
     defaultMutationDebounceMs: Math.max(
       150,
@@ -119,7 +132,7 @@ async function syncTab(tab: chrome.tabs.Tab): Promise<void> {
     });
   } catch (error) {
     // The content script is not available on restricted browser pages.
-    console.debug("Sync ignoree pour cet onglet", error);
+    console.debug("Sync ignorée pour cet onglet", error);
   }
 }
 
@@ -134,13 +147,13 @@ async function ensureTabCanReceiveMessages(tabId: number): Promise<void> {
       await sendTabMessage(tabId, { type: "START_SELECTION" });
       return;
     } catch (secondError) {
-      console.warn("Impossible d'activer la selection visuelle", {
+      console.warn("Impossible d'activer la sélection visuelle", {
         firstError,
         secondError,
         tabId
       });
       throw new Error(
-        "Impossible d'activer la selection sur cette page. Rechargez l'onglet puis reessayez. Si la page est interne au navigateur, cette action n'est pas autorisee."
+        "Impossible d'activer la sélection sur cette page. Rechargez l'onglet puis réessayez. Si la page est interne au navigateur, cette action n'est pas autorisée."
       );
     }
   }
@@ -453,6 +466,22 @@ async function handleContentMessage(message: MessageFromContent) {
           lastSeenAt: Date.now(),
           lastError: message.payload.error,
           lastSnapshot: watch.lastSnapshot ?? message.payload.snapshot
+        };
+
+        return state;
+      });
+      return { ok: true };
+    case "WATCH_TARGET_REFRESHED":
+      await mutateState((state) => {
+        const index = state.watches.findIndex((watch) => watch.id === message.payload.watchId);
+        if (index === -1 || !message.payload.selector.xpath) {
+          return state;
+        }
+
+        state.watches[index] = {
+          ...state.watches[index],
+          selector: message.payload.selector,
+          updatedAt: Date.now()
         };
 
         return state;

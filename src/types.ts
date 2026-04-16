@@ -2,6 +2,7 @@ export type WatchStatus = "idle" | "monitoring" | "alert" | "missing" | "paused"
 
 export interface SelectorDescriptor {
   css: string;
+  xpath?: string;
   id?: string;
   dataTestId?: string;
   ariaLabel?: string;
@@ -67,12 +68,16 @@ export interface StoredAudio {
   uploadedAt: number;
 }
 
+export type AlarmPresetId = "classic" | "beep" | "arcade" | "klaxon" | "tada";
+export type AudioMode = "preset" | "custom" | "default";
+
 export interface AppSettings {
   defaultPollIntervalMs: number;
   defaultMutationDebounceMs: number;
   defaultUseMutationObserver: boolean;
   defaultUsePolling: boolean;
-  audioMode: "default" | "custom";
+  audioMode: AudioMode;
+  audioPresetId: AlarmPresetId;
   customAudio?: StoredAudio;
   alertVolume: number;
 }
@@ -107,6 +112,11 @@ export interface WatchTriggerPayload {
   pageTitle: string;
 }
 
+export interface WatchTargetRefreshPayload {
+  watchId: string;
+  selector: SelectorDescriptor;
+}
+
 export type MessageFromUi =
   | { type: "GET_STATE" }
   | { type: "BEGIN_SELECTION"; tabId: number }
@@ -121,6 +131,7 @@ export type MessageFromContent =
   | { type: "REGISTER_PAGE"; pageUrl: string; pageTitle: string }
   | { type: "SAVE_WATCH"; draft: NewWatchDraft }
   | { type: "WATCH_STATUS"; payload: WatchStatusUpdate }
+  | { type: "WATCH_TARGET_REFRESHED"; payload: WatchTargetRefreshPayload }
   | { type: "WATCH_TRIGGERED"; payload: WatchTriggerPayload };
 
 export type MessageToContent =

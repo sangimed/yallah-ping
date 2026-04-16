@@ -8,7 +8,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   defaultMutationDebounceMs: 600,
   defaultUseMutationObserver: true,
   defaultUsePolling: true,
-  audioMode: "default",
+  audioMode: "preset",
+  audioPresetId: "classic",
   alertVolume: 1
 };
 

@@ -49,7 +49,7 @@ export function renderWatchSummary(watch: WatchRecord): string {
     <div class="watch-meta">
       <div>${renderStatusPill(watch.status)}</div>
       <div><strong>Page :</strong> ${escapeHtml(watch.pageTitle || watch.pageUrl)}</div>
-      <div><strong>Derniere activite :</strong> ${escapeHtml(formatRelativeDelay(watch.lastSeenAt))}</div>
+      <div><strong>Dernière activité :</strong> ${escapeHtml(formatRelativeDelay(watch.lastSeenAt))}</div>
       ${
         watch.lastChangeTitle
           ? `<div><strong>Dernier changement :</strong> ${escapeHtml(watch.lastChangeTitle)}</div>`
@@ -60,7 +60,7 @@ export function renderWatchSummary(watch: WatchRecord): string {
 }
 
 export function renderAlertCard(alert: AlertRecord): string {
-  const beforeText = alert.before?.text || alert.before?.lineSample.join("\n") || "Aucune valeur precedente";
+  const beforeText = alert.before?.text || alert.before?.lineSample.join("\n") || "Aucune valeur précédente";
   const afterText = alert.after?.text || alert.after?.lineSample.join("\n") || "Zone non visible";
   const added = alert.summary.addedLines
     .map((line) => `<div class="diff-added">+ ${escapeHtml(line)}</div>`)
@@ -78,7 +78,7 @@ export function renderAlertCard(alert: AlertRecord): string {
           <div class="alert-meta">
             <div><strong>Quand :</strong> ${escapeHtml(formatDateTime(alert.triggeredAt))}</div>
             <div><strong>Page :</strong> ${escapeHtml(alert.pageTitle || alert.pageUrl)}</div>
-            <div><strong>Resume :</strong> ${escapeHtml(alert.summary.title)}</div>
+            <div><strong>Résumé :</strong> ${escapeHtml(alert.summary.title)}</div>
           </div>
         </div>
         <button class="secondary" data-action="ack-watch" data-watch-id="${escapeHtml(alert.watchId)}">Acquitter cette surveillance</button>
@@ -88,7 +88,7 @@ export function renderAlertCard(alert: AlertRecord): string {
         ${
           added || removed
             ? `<div class="diff-box">
-                <h4>Lignes reperees</h4>
+                <h4>Lignes repérées</h4>
                 ${added || ""}
                 ${removed || ""}
               </div>`

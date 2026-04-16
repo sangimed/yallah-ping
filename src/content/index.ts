@@ -1,4 +1,5 @@
 import type {
+  AppState,
   ChangeSummary,
   MessageToContent,
   NewWatchDraft,
@@ -7,9 +8,10 @@ import type {
   WatchStatusUpdate
 } from "../types";
 import { sendRuntimeMessage } from "../shared/browser";
-import { createId, normalizePageUrl } from "../shared/dom";
+import { normalizePageUrl } from "../shared/dom";
 import { buildSelectorDescriptor, describeElement, resolveElement } from "../shared/selectors";
 import { captureSnapshot, compareSnapshots } from "../shared/snapshot";
+import { escapeHtml } from "../shared/ui";
 
 const STYLE_ID = "yallah-ping-style";
 const OVERLAY_ID = "yallah-ping-overlay";
@@ -160,7 +162,7 @@ class WatchMonitor {
           await this.trigger(summary, this.currentSnapshot, undefined);
         }
       } else {
-        await this.reportStatus("missing", undefined, "Zone non retrouvee sur cette page.");
+        await this.reportStatus("missing", undefined, "Zone non retrouvée sur cette page.");
       }
 
       this.hadVisibleElement = false;
@@ -169,6 +171,7 @@ class WatchMonitor {
 
     const snapshot = captureSnapshot(targetElement);
     this.currentSnapshot = snapshot;
+    await this.refreshSelectorIfNeeded(targetElement);
 
     if (!this.baselineSnapshot) {
       this.baselineSnapshot = this.watch.lastSnapshot ?? snapshot;
@@ -183,6 +186,32 @@ class WatchMonitor {
     }
 
     await this.reportStatus("monitoring", snapshot);
+  }
+
+  private async refreshSelectorIfNeeded(targetElement: Element) {
+    if (this.watch.selector.xpath) {
+      return;
+    }
+
+    const selector = buildSelectorDescriptor(targetElement);
+    if (!selector.xpath) {
+      return;
+    }
+
+    this.watch = {
+      ...this.watch,
+      selector
+    };
+
+    await sendRuntimeMessage({
+      type: "WATCH_TARGET_REFRESHED",
+      payload: {
+        watchId: this.watch.id,
+        selector
+      }
+    }).catch((error) => {
+      console.debug("Actualisation du sélecteur ignorée", error);
+    });
   }
 
   private async trigger(
@@ -262,7 +291,7 @@ class SelectionOverlay {
       <div class="yp-highlight"></div>
       <div class="yp-tip">
         <strong>Yallah Ping</strong>
-        <span>Survolez la zone a surveiller, cliquez pour la choisir, puis validez.</span>
+        <span>Survolez la zone à surveiller, cliquez pour la choisir, puis validez.</span>
       </div>
     `;
 
@@ -316,10 +345,10 @@ class SelectionOverlay {
 
       #${OVERLAY_ID} .yp-highlight {
         position: fixed;
-        border: 3px solid #c2410c;
-        border-radius: 12px;
-        background: rgba(251, 146, 60, 0.15);
-        box-shadow: 0 0 0 9999px rgba(15, 23, 42, 0.12);
+        border: 3px solid #2563eb;
+        border-radius: 8px;
+        background: rgba(37, 99, 235, 0.14);
+        box-shadow: 0 0 0 9999px rgba(15, 23, 42, 0.18);
         transition: all 90ms ease;
         pointer-events: none;
       }
@@ -334,13 +363,17 @@ class SelectionOverlay {
         align-items: center;
         max-width: min(720px, calc(100vw - 24px));
         padding: 12px 16px;
-        border-radius: 999px;
-        background: rgba(255, 248, 241, 0.96);
-        border: 1px solid rgba(194, 65, 12, 0.26);
-        box-shadow: 0 18px 40px rgba(64, 38, 18, 0.18);
-        font: 600 14px/1.4 "Trebuchet MS", "Segoe UI", sans-serif;
-        color: #1f2937;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.98);
+        border: 1px solid #d6dee8;
+        box-shadow: 0 16px 36px rgba(17, 24, 39, 0.16);
+        font: 600 14px/1.4 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        color: #111827;
         pointer-events: none;
+      }
+
+      #${OVERLAY_ID} .yp-tip strong {
+        color: #1d4ed8;
       }
 
       #${OVERLAY_ID} .yp-modal {
@@ -350,12 +383,12 @@ class SelectionOverlay {
         bottom: 18px;
         width: min(420px, calc(100vw - 24px));
         padding: 16px;
-        border-radius: 18px;
-        background: rgba(255, 251, 247, 0.98);
-        border: 1px solid rgba(194, 65, 12, 0.24);
-        box-shadow: 0 22px 50px rgba(64, 38, 18, 0.24);
-        font: 500 14px/1.5 "Trebuchet MS", "Segoe UI", sans-serif;
-        color: #1f2937;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.98);
+        border: 1px solid #d6dee8;
+        box-shadow: 0 22px 50px rgba(17, 24, 39, 0.2);
+        font: 500 14px/1.5 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        color: #111827;
         cursor: auto;
       }
 
@@ -366,7 +399,7 @@ class SelectionOverlay {
 
       #${OVERLAY_ID} .yp-modal p {
         margin: 0 0 12px;
-        color: #6b7280;
+        color: #5d687a;
       }
 
       #${OVERLAY_ID} .yp-modal label {
@@ -378,8 +411,8 @@ class SelectionOverlay {
       #${OVERLAY_ID} .yp-modal input {
         width: 100%;
         padding: 10px 12px;
-        border-radius: 12px;
-        border: 1px solid rgba(122, 83, 52, 0.22);
+        border-radius: 8px;
+        border: 1px solid #d6dee8;
       }
 
       #${OVERLAY_ID} .yp-actions {
@@ -390,21 +423,21 @@ class SelectionOverlay {
 
       #${OVERLAY_ID} .yp-actions button {
         cursor: pointer;
-        border: 0;
-        border-radius: 999px;
+        border: 1px solid transparent;
+        border-radius: 8px;
         padding: 10px 14px;
         font-weight: 700;
       }
 
       #${OVERLAY_ID} .yp-primary {
-        background: #c2410c;
+        background: #2563eb;
         color: white;
       }
 
       #${OVERLAY_ID} .yp-secondary {
         background: white;
-        color: #1f2937;
-        border: 1px solid rgba(122, 83, 52, 0.22);
+        color: #111827;
+        border-color: #d6dee8;
       }
     `;
 
@@ -451,7 +484,7 @@ class SelectionOverlay {
     this.highlightBox.style.height = `${rect.height}px`;
 
     if (this.infoBox) {
-      this.infoBox.querySelector("span")!.textContent = `Zone survolee : ${describeElement(element)}`;
+      this.infoBox.querySelector("span")!.textContent = `Zone survolée : ${describeElement(element)}`;
     }
   };
 
@@ -481,7 +514,10 @@ class SelectionOverlay {
 
     this.hoveredElement = element;
     this.isConfirming = true;
-    this.showConfirmation(element);
+    void this.showConfirmation(element).catch((error) => {
+      console.error("Impossible d'afficher la confirmation de surveillance", error);
+      this.isConfirming = false;
+    });
   };
 
   private handleKeyDown = (event: KeyboardEvent) => {
@@ -508,18 +544,22 @@ class SelectionOverlay {
     return element;
   }
 
-  private showConfirmation(element: Element) {
+  private async showConfirmation(element: Element) {
     this.modal?.remove();
 
     const snapshot = captureSnapshot(element);
-    const suggestedLabel = describeElement(element);
+    const defaultLabel = await getDefaultWatchLabel();
+    if (!this.active || !this.isConfirming) {
+      return;
+    }
+
     const modal = document.createElement("div");
     modal.className = "yp-modal";
     modal.innerHTML = `
       <h3>Ajouter cette surveillance</h3>
       <p>Cette zone sera suivie localement dans ce navigateur. Vous recevrez une alarme si elle change.</p>
       <label for="yp-watch-name">Nom visible</label>
-      <input id="yp-watch-name" type="text" value="${suggestedLabel.replace(/"/g, "&quot;")}" maxlength="90" />
+      <input id="yp-watch-name" type="text" placeholder="${escapeHtml(defaultLabel)}" maxlength="90" />
       <div class="yp-actions">
         <button class="yp-primary" type="button">Enregistrer</button>
         <button class="yp-secondary" type="button">Annuler</button>
@@ -531,7 +571,6 @@ class SelectionOverlay {
 
     const input = modal.querySelector("input") as HTMLInputElement;
     input.focus();
-    input.select();
 
     const saveButton = modal.querySelector(".yp-primary") as HTMLButtonElement;
     const cancelButton = modal.querySelector(".yp-secondary") as HTMLButtonElement;
@@ -543,7 +582,7 @@ class SelectionOverlay {
 
     saveButton.addEventListener("click", async () => {
       const draft: NewWatchDraft = {
-        label: input.value.trim() || suggestedLabel,
+        label: input.value.trim() || defaultLabel,
         pageUrl: normalizePageUrl(window.location.href),
         pageTitle: document.title,
         selector: buildSelectorDescriptor(element),
@@ -562,6 +601,33 @@ class SelectionOverlay {
 
 const selectionOverlay = new SelectionOverlay();
 const monitors = new Map<string, WatchMonitor>();
+let currentPageWatches: WatchRecord[] = [];
+
+function getNextDefaultWatchLabel(labels: string[]): string {
+  const baseLabel = "Nouvelle alerte";
+  const existingLabels = new Set(labels.map((label) => label.trim().toLocaleLowerCase("fr-FR")).filter(Boolean));
+
+  if (!existingLabels.has(baseLabel.toLocaleLowerCase("fr-FR"))) {
+    return baseLabel;
+  }
+
+  let suffix = 2;
+  while (existingLabels.has(`${baseLabel} ${suffix}`.toLocaleLowerCase("fr-FR"))) {
+    suffix += 1;
+  }
+
+  return `${baseLabel} ${suffix}`;
+}
+
+async function getDefaultWatchLabel(): Promise<string> {
+  try {
+    const state = await sendRuntimeMessage<AppState>({ type: "GET_STATE" });
+    return getNextDefaultWatchLabel(state.watches.map((watch) => watch.label));
+  } catch (error) {
+    console.debug("Nom par défaut calculé depuis les surveillances de la page", error);
+    return getNextDefaultWatchLabel(currentPageWatches.map((watch) => watch.label));
+  }
+}
 
 async function registerCurrentPage() {
   const response = await sendRuntimeMessage<{ watches: WatchRecord[] }>({
@@ -574,6 +640,7 @@ async function registerCurrentPage() {
 }
 
 function syncWatches(watches: WatchRecord[]) {
+  currentPageWatches = watches;
   const nextIds = new Set(watches.map((watch) => watch.id));
 
   for (const [watchId, monitor] of monitors.entries()) {

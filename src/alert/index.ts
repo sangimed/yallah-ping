@@ -1,8 +1,9 @@
 import type { AlertRecord, AppState } from "../types";
-import { AlarmPlayer } from "../shared/audio";
+import { AlarmPlayer, getAlarmDisplayName } from "../shared/audio";
 import { createTab, sendRuntimeMessage } from "../shared/browser";
 import { loadState } from "../shared/storage";
-import { renderAlertCard } from "../shared/ui";
+import { formatDateTime } from "../shared/time";
+import { escapeHtml, renderAlertCard } from "../shared/ui";
 
 const appElement = document.getElementById("app");
 const alarmPlayer = new AlarmPlayer();
@@ -22,24 +23,52 @@ async function syncAlarm(state: AppState) {
   }
 }
 
+function renderMetric(label: string, value: string, detail: string): string {
+  return `
+    <div class="metric">
+      <span>${escapeHtml(label)}</span>
+      <strong>${escapeHtml(value)}</strong>
+      <small>${escapeHtml(detail)}</small>
+    </div>
+  `;
+}
+
 function render(state: AppState) {
   const activeAlerts = state.alerts.filter((alert) => !alert.acknowledgedAt);
   const recentAlerts = state.alerts.filter((alert) => alert.acknowledgedAt).slice(0, 5);
 
   app.innerHTML = `
-    <section class="hero">
-      <h1>${activeAlerts.length ? "Alerte Yallah Ping" : "Tout est acquitte"}</h1>
-      <p>${
-        activeAlerts.length
-          ? "Le son reste actif jusqu'a acquittement explicite."
-          : "Aucune alerte en attente. Vous pouvez fermer cette fenetre."
-      }</p>
+    <section class="hero alert-hero">
+      <div>
+        <span class="eyebrow">${activeAlerts.length ? "Action requise" : "À jour"}</span>
+        <h1>${activeAlerts.length ? "Alerte active" : "Tout est acquitté"}</h1>
+        <p>${
+          activeAlerts.length
+            ? "Le son reste actif jusqu'à acquittement explicite."
+            : "Aucune alerte en attente. Vous pouvez fermer cette fenêtre."
+        }</p>
+      </div>
+      <div class="hero-actions">
+        ${
+          activeAlerts.length
+            ? `<button data-action="ack-all">Acquitter toutes les alertes</button>`
+            : `<span class="pill ok">Calme</span>`
+        }
+      </div>
+    </section>
+
+    <section class="metric-strip">
+      ${renderMetric("Alertes actives", String(activeAlerts.length), activeAlerts.length ? "à traiter" : "aucune")}
+      ${renderMetric("Historique", String(recentAlerts.length), "dernières alertes")}
+      ${renderMetric("Son", getAlarmDisplayName(state.settings), "actif")}
     </section>
 
     ${
       activeAlerts.length
         ? `<section class="banner alert stack">
-            <strong>${activeAlerts.length} changement${activeAlerts.length > 1 ? "s" : ""} detecte${activeAlerts.length > 1 ? "s" : ""}</strong>
+            <strong>${activeAlerts.length} changement${activeAlerts.length > 1 ? "s" : ""} détecté${
+              activeAlerts.length > 1 ? "s" : ""
+            }</strong>
             <div class="row">
               <button data-action="ack-all">Acquitter toutes les alertes</button>
             </div>
@@ -48,34 +77,43 @@ function render(state: AppState) {
     }
 
     <section class="panel stack">
-      <h2>Ce qui a change</h2>
+      <div class="panel-header">
+        <div>
+          <h2>Ce qui a change</h2>
+          <p>${activeAlerts.length ? "Comparez l'état avant et maintenant." : "Rien à traiter pour le moment."}</p>
+        </div>
+      </div>
       ${
         activeAlerts.length
           ? activeAlerts.map((alert) => renderAlertCard(alert)).join("")
-          : `<div class="empty-state">Des qu'un changement important est detecte, le detail apparait ici avec l'etat avant / apres.</div>`
+          : `<div class="empty-state">Dès qu'un changement important est détecté, le détail apparaît ici avec l'état avant / après.</div>`
       }
     </section>
 
     ${
       recentAlerts.length
         ? `<section class="panel stack">
-            <h2>Historique recent</h2>
+            <div class="panel-header">
+              <div>
+                <h2>Historique recent</h2>
+                <p>Les cinq dernières alertes acquittées.</p>
+              </div>
+            </div>
             ${recentAlerts
               .map(
                 (alert) => `
                   <article class="watch-card">
-                    <div class="split">
-                      <div class="stack">
-                        <h3>${alert.watchLabel}</h3>
+                    <div class="card-header">
+                      <div class="stack compact-stack">
+                        <h3>${escapeHtml(alert.watchLabel)}</h3>
                         <div class="watch-meta">
-                          <div><strong>Declenchee :</strong> ${new Intl.DateTimeFormat("fr-FR", {
-                            dateStyle: "short",
-                            timeStyle: "medium"
-                          }).format(alert.triggeredAt)}</div>
-                          <div><strong>Resume :</strong> ${alert.summary.title}</div>
+                          <div><strong>Déclenchée :</strong> ${escapeHtml(formatDateTime(alert.triggeredAt))}</div>
+                          <div><strong>Résumé :</strong> ${escapeHtml(alert.summary.title)}</div>
                         </div>
                       </div>
-                      <button class="secondary" data-action="open-alert-page" data-url="${alert.pageUrl}">Ouvrir la page</button>
+                      <button class="secondary compact" data-action="open-alert-page" data-url="${escapeHtml(
+                        alert.pageUrl
+                      )}">Ouvrir</button>
                     </div>
                   </article>
                 `
@@ -90,8 +128,10 @@ function render(state: AppState) {
 }
 
 function wireActions(activeAlerts: AlertRecord[]) {
-  app.querySelector('[data-action="ack-all"]')?.addEventListener("click", async () => {
-    await sendRuntimeMessage({ type: "ACK_ALERTS" });
+  app.querySelectorAll('[data-action="ack-all"]').forEach((node) => {
+    node.addEventListener("click", async () => {
+      await sendRuntimeMessage({ type: "ACK_ALERTS" });
+    });
   });
 
   app.querySelectorAll<HTMLButtonElement>('[data-action="ack-watch"]').forEach((button) => {

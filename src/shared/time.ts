@@ -11,14 +11,14 @@ export function formatDateTime(timestamp?: number): string {
 
 export function formatRelativeDelay(timestamp?: number): string {
   if (!timestamp) {
-    return "Aucune activite recente";
+    return "Aucune activité récente";
   }
 
   const deltaMs = Date.now() - timestamp;
   const deltaMinutes = Math.round(deltaMs / 60000);
 
   if (deltaMinutes <= 1) {
-    return "A l'instant";
+    return "À l'instant";
   }
 
   if (deltaMinutes < 60) {

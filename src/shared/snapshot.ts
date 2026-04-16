@@ -28,8 +28,8 @@ export function compareSnapshots(before?: ElementSnapshot, after?: ElementSnapsh
 
   if (!after) {
     return {
-      title: "La zone surveillee n'est plus visible",
-      details: ["L'element choisi n'a plus pu etre retrouve sur la page."],
+      title: "La zone surveillée n'est plus visible",
+      details: ["L'élément choisi n'a plus pu être retrouvé sur la page."],
       addedLines: [],
       removedLines: before?.lineSample ?? []
     };
@@ -37,8 +37,8 @@ export function compareSnapshots(before?: ElementSnapshot, after?: ElementSnapsh
 
   if (!before) {
     return {
-      title: "Nouvelle zone surveillee",
-      details: ["Un premier etat a ete enregistre pour cette zone."],
+      title: "Nouvelle zone surveillée",
+      details: ["Un premier état a été enregistré pour cette zone."],
       addedLines: after.lineSample,
       removedLines: []
     };
@@ -58,24 +58,24 @@ export function compareSnapshots(before?: ElementSnapshot, after?: ElementSnapsh
   const details: string[] = [];
 
   if (before.childCount !== after.childCount) {
-    details.push(`Nombre d'elements visibles : ${before.childCount} -> ${after.childCount}`);
+    details.push(`Nombre d'éléments visibles : ${before.childCount} -> ${after.childCount}`);
   }
 
   if (before.text !== after.text) {
-    details.push("Le contenu visible a change.");
+    details.push("Le contenu visible a changé.");
   }
 
   if (!details.length) {
-    details.push("La structure HTML de la zone a change.");
+    details.push("La structure HTML de la zone a changé.");
   }
 
-  let title = "Changement detecte";
+  let title = "Changement détecté";
   if (addedLines.length && !removedLines.length) {
-    title = "Nouveau contenu detecte";
+    title = "Nouveau contenu détecté";
   } else if (!addedLines.length && removedLines.length) {
     title = "Du contenu a disparu";
   } else if (before.childCount !== after.childCount) {
-    title = "La liste visible a change";
+    title = "La liste visible a changé";
   }
 
   return {
