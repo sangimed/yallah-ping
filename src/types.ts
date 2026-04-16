@@ -70,6 +70,7 @@ export interface StoredAudio {
 
 export type AlarmPresetId = "classic" | "beep" | "arcade" | "klaxon" | "tada";
 export type AudioMode = "preset" | "custom" | "default";
+export type ThemeMode = "light" | "dark";
 
 export interface AppSettings {
   defaultPollIntervalMs: number;
@@ -80,6 +81,7 @@ export interface AppSettings {
   audioPresetId: AlarmPresetId;
   customAudio?: StoredAudio;
   alertVolume: number;
+  themeMode: ThemeMode;
 }
 
 export interface AppState {

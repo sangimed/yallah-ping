@@ -10,7 +10,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   defaultUsePolling: true,
   audioMode: "preset",
   audioPresetId: "classic",
-  alertVolume: 1
+  alertVolume: 1,
+  themeMode: "light"
 };
 
 export const DEFAULT_STATE: AppState = {

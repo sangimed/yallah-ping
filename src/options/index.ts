@@ -3,6 +3,7 @@ import { createTab, sendRuntimeMessage } from "../shared/browser";
 import { ALARM_PRESETS, normalizeAlarmPresetId } from "../shared/alarm-presets";
 import { AlarmPlayer, getAlarmDisplayName } from "../shared/audio";
 import { loadState } from "../shared/storage";
+import { applyTheme, normalizeThemeMode } from "../shared/theme";
 import { formatDateTime } from "../shared/time";
 import { escapeHtml, renderStatusPill } from "../shared/ui";
 
@@ -124,6 +125,32 @@ function renderSoundSettings(state: AppState): string {
   `;
 }
 
+function renderAppearanceSettings(state: AppState): string {
+  const themeMode = normalizeThemeMode(state.settings.themeMode);
+
+  return `
+    <section class="panel stack">
+      <div class="panel-header">
+        <div>
+          <h2>Apparence</h2>
+          <p>Le choix est conservé localement, même après redémarrage du navigateur.</p>
+        </div>
+      </div>
+
+      <div class="segmented-control" role="radiogroup" aria-label="Thème de l'interface">
+        <label class="${themeMode === "light" ? "is-selected" : ""}">
+          <input name="theme-mode" type="radio" value="light" ${themeMode === "light" ? "checked" : ""} />
+          <span>Clair</span>
+        </label>
+        <label class="${themeMode === "dark" ? "is-selected" : ""}">
+          <input name="theme-mode" type="radio" value="dark" ${themeMode === "dark" ? "checked" : ""} />
+          <span>Sombre</span>
+        </label>
+      </div>
+    </section>
+  `;
+}
+
 function renderWatchEditor(watch: WatchRecord): string {
   const watchId = escapeHtml(watch.id);
 
@@ -237,6 +264,8 @@ function render(state: AppState) {
         : ""
     }
 
+    ${renderAppearanceSettings(state)}
+
     ${renderSoundSettings(state)}
 
     <section class="panel stack">
@@ -339,6 +368,27 @@ async function testSound(settings: AppState["settings"]) {
 }
 
 function wireActions(state: AppState) {
+  app.querySelectorAll<HTMLInputElement>('input[name="theme-mode"]').forEach((input) => {
+    input.addEventListener("change", async () => {
+      if (!input.checked) {
+        return;
+      }
+
+      const themeMode = normalizeThemeMode(input.value);
+      applyTheme({
+        ...state.settings,
+        themeMode
+      });
+
+      await sendRuntimeMessage({
+        type: "SAVE_SETTINGS",
+        patch: {
+          themeMode
+        }
+      });
+    });
+  });
+
   app.querySelector('[data-action="save-defaults"]')?.addEventListener("click", async () => {
     const pollSeconds = Number((document.getElementById("default-poll") as HTMLInputElement).value || "15");
     const debounceMs = Number((document.getElementById("default-debounce") as HTMLInputElement).value || "600");
@@ -560,6 +610,7 @@ function wireActions(state: AppState) {
 
 async function renderApp() {
   const state = await loadState();
+  applyTheme(state.settings);
   render(state);
 }
 

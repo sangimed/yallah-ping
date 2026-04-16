@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Yallah Ping",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Surveillance visuelle locale pour applications web internes sans notifications.",
   "permissions": ["storage", "tabs", "scripting", "unlimitedStorage"],
   "host_permissions": ["<all_urls>"],

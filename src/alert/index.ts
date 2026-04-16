@@ -2,6 +2,7 @@ import type { AlertRecord, AppState } from "../types";
 import { AlarmPlayer, getAlarmDisplayName } from "../shared/audio";
 import { createTab, sendRuntimeMessage } from "../shared/browser";
 import { loadState } from "../shared/storage";
+import { applyTheme } from "../shared/theme";
 import { formatDateTime } from "../shared/time";
 import { escapeHtml, renderAlertCard } from "../shared/ui";
 
@@ -166,6 +167,7 @@ function wireActions(activeAlerts: AlertRecord[]) {
 
 async function renderApp() {
   const state = await loadState();
+  applyTheme(state.settings);
   await syncAlarm(state);
   render(state);
 }

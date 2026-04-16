@@ -2,6 +2,7 @@ import type { AppState, WatchRecord } from "../types";
 import { createTab, queryTabs, sendRuntimeMessage } from "../shared/browser";
 import { getAlarmDisplayName } from "../shared/audio";
 import { loadState } from "../shared/storage";
+import { applyTheme } from "../shared/theme";
 import { escapeHtml, renderStatusPill, renderWatchSummary } from "../shared/ui";
 
 const appElement = document.getElementById("app");
@@ -209,6 +210,7 @@ function wireActions(state: AppState) {
 
 async function renderApp() {
   const [state, currentTab] = await Promise.all([loadState(), getCurrentTab()]);
+  applyTheme(state.settings);
   render(state, currentTab?.title);
 }
 

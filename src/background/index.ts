@@ -21,6 +21,7 @@ import {
 } from "../shared/browser";
 import { createId, isSamePage } from "../shared/dom";
 import { DEFAULT_STATE, loadState, mutateState, saveState } from "../shared/storage";
+import { normalizeThemeMode } from "../shared/theme";
 
 function cloneWatch(watch: WatchRecord): WatchRecord {
   return structuredClone(watch);
@@ -52,6 +53,7 @@ function sanitizeSettingsPatch(patch: Partial<AppSettings>, current: AppSettings
     audioMode,
     audioPresetId: normalizeAlarmPresetId(patch.audioPresetId ?? current.audioPresetId),
     customAudio,
+    themeMode: normalizeThemeMode(patch.themeMode ?? current.themeMode),
     defaultPollIntervalMs: Math.max(2000, Number(patch.defaultPollIntervalMs ?? current.defaultPollIntervalMs)),
     defaultMutationDebounceMs: Math.max(
       150,
